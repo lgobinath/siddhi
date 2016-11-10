@@ -33,6 +33,7 @@
         <module>eval-script</module>
         <module>string</module>
         <module>geo</module>
+        <module>graph</module>
         <module>math</module>
         <module>event-table</module>
         <module>regex</module>
