@@ -142,10 +142,10 @@ public class LargestConnectedComponentProcessor extends StreamProcessor {
                     if (graph.existsEdge(userId, referUserId)) {
 
                         if (pegasusMap.get(userId) > pegasusMap.get(referUserId)) {
-                            pegasusMap.replace(userId, pegasusMap.get(referUserId));
+                            pegasusMap.put(userId, pegasusMap.get(referUserId));
                             traversalPerformed = true;
                         } else if (pegasusMap.get(userId) < pegasusMap.get(referUserId)) {
-                            pegasusMap.replace(referUserId, pegasusMap.get(userId));
+                            pegasusMap.put(referUserId, pegasusMap.get(userId));
                             traversalPerformed = true;
                         }
                     }

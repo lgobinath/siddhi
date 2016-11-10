@@ -34,7 +34,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Test class for the MaximumCliqueStreamProcessor
  */
 public class MaximumCliqueTestCase {
-    private static final Logger log = Logger.getLogger(MaximumCliqueTestCase.class);
+    private static final Logger LOGGER = Logger.getLogger(MaximumCliqueTestCase.class);
     private AtomicInteger count = new AtomicInteger(0);
     private boolean eventArrived;
 
@@ -46,13 +46,14 @@ public class MaximumCliqueTestCase {
 
     @Test
     public void MaximumCliqueTest1() throws InterruptedException {
+        LOGGER.info("Test maximum clique with update only when there is a change");
 
         SiddhiManager siddhiManager = new SiddhiManager();
 
         String cseEventStream = "" +
                 "define stream cseEventStream (id String, friendsId String, volume int);";
         String query = "" + "@info(name = 'query1') " +
-                "from cseEventStream#graph:maximumClique(id,friendsId,false) " +
+                "from cseEventStream#graph:maximumClique(id, friendsId, false) " +
                 "select maximumClique " +
                 "insert all events into outputStream ;";
 
@@ -65,6 +66,12 @@ public class MaximumCliqueTestCase {
                 for (Event inEvent : inEvents) {
                     count.incrementAndGet();
                     eventArrived = true;
+
+                    if (count.get() == 1) {
+                        Assert.assertEquals(((Integer) inEvent.getData()[0]).intValue(), 2);
+                    } else if (count.get() == 2) {
+                        Assert.assertEquals(((Integer) inEvent.getData()[0]).intValue(), 3);
+                    }
                 }
             }
         });
@@ -72,11 +79,54 @@ public class MaximumCliqueTestCase {
         InputHandler inputHandler = executionPlanRuntime.getInputHandler("cseEventStream");
         executionPlanRuntime.start();
         inputHandler.send(new Object[]{"1234", "2345", 0});
-        Thread.sleep(1000);
         inputHandler.send(new Object[]{"2345", "5678", 1});
-        Thread.sleep(1000);
         inputHandler.send(new Object[]{"5678", "1234", 3});
-        Thread.sleep(4000);
+
+        Thread.sleep(100);
+        Assert.assertEquals(2, count.get());
+        Assert.assertTrue(eventArrived);
+        executionPlanRuntime.shutdown();
+    }
+
+    @Test
+    public void MaximumCliqueTest2() throws InterruptedException {
+        LOGGER.info("Test maximum clique with update whenever a new event comes");
+
+        SiddhiManager siddhiManager = new SiddhiManager();
+
+        String cseEventStream = "" +
+                "define stream cseEventStream (id String, friendsId String, volume int);";
+        String query = "" + "@info(name = 'query1') " +
+                "from cseEventStream#graph:maximumClique(id, friendsId, false) " +
+                "select maximumClique " +
+                "insert all events into outputStream ;";
+
+        ExecutionPlanRuntime executionPlanRuntime = siddhiManager.createExecutionPlanRuntime(cseEventStream + query);
+
+        executionPlanRuntime.addCallback("query1", new QueryCallback() {
+            @Override
+            public void receive(long timeStamp, Event[] inEvents, Event[] removeEvents) {
+                EventPrinter.print(timeStamp, inEvents, removeEvents);
+                for (Event inEvent : inEvents) {
+                    count.incrementAndGet();
+                    eventArrived = true;
+
+                    if (count.get() == 1) {
+                        Assert.assertEquals(((Integer) inEvent.getData()[0]).intValue(), 2);
+                    } else if (count.get() == 2) {
+                        Assert.assertEquals(((Integer) inEvent.getData()[0]).intValue(), 3);
+                    }
+                }
+            }
+        });
+
+        InputHandler inputHandler = executionPlanRuntime.getInputHandler("cseEventStream");
+        executionPlanRuntime.start();
+        inputHandler.send(new Object[]{"1234", "2345", 0});
+        inputHandler.send(new Object[]{"2345", "5678", 1});
+        inputHandler.send(new Object[]{"5678", "1234", 3});
+
+        Thread.sleep(100);
         Assert.assertEquals(2, count.get());
         Assert.assertTrue(eventArrived);
         executionPlanRuntime.shutdown();

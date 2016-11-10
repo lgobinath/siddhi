@@ -24,7 +24,7 @@ import java.util.Set;
 /**
  * This class is used to generate the graph from the stream data
  */
-public class Graph {
+class Graph {
     private HashMap<String, Set<String>> adjacencyList = new HashMap<String, Set<String>>(10000);
 
     /**

@@ -34,7 +34,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Test class for the LargestConnectedComponentProcessor
  */
 public class LargestConnectedComponentTestCase {
-    private static final Logger log = Logger.getLogger(LargestConnectedComponentTestCase.class);
+    private static final Logger LOGGER = Logger.getLogger(LargestConnectedComponentTestCase.class);
     private AtomicInteger count = new AtomicInteger(0);
     private boolean eventArrived;
 
@@ -46,14 +46,15 @@ public class LargestConnectedComponentTestCase {
 
     @Test
     public void LargestConnectedComponentTest1() throws InterruptedException {
+        LOGGER.info("Test largest connected component with update only when there is a change");
 
         SiddhiManager siddhiManager = new SiddhiManager();
 
-        String cseEventStream = "" +
-                "define stream cseEventStream (id String, friendsId String, volume int);";
-        String query = "" + "@info(name = 'query1') " +
-                "from cseEventStream#graph:lcc(id,friendsId,false) " +
-                "select largestConnectedComponent " + "insert all events into outputStream ;";
+        String cseEventStream = "define stream cseEventStream (id String, friendsId String, volume int); ";
+        String query = "@info(name = 'query1') " +
+                "from cseEventStream#graph:lcc(id, friendsId, false) " +
+                "select largestConnectedComponent " +
+                "insert all events into outputStream;";
 
         ExecutionPlanRuntime executionPlanRuntime = siddhiManager.createExecutionPlanRuntime(cseEventStream + query);
 
@@ -64,6 +65,16 @@ public class LargestConnectedComponentTestCase {
                 for (Event inEvent : inEvents) {
                     count.incrementAndGet();
                     eventArrived = true;
+
+                    if (count.get() == 1) {
+                        Assert.assertEquals(((Long) inEvent.getData()[0]).longValue(), 2L);
+                    } else if (count.get() == 2) {
+                        Assert.assertEquals(((Long) inEvent.getData()[0]).longValue(), 3L);
+                    } else if (count.get() == 3) {
+                        Assert.assertEquals(((Long) inEvent.getData()[0]).longValue(), 4L);
+                    } else if (count.get() == 4) {
+                        Assert.assertEquals(((Long) inEvent.getData()[0]).longValue(), 5L);
+                    }
                 }
             }
         });
@@ -71,20 +82,66 @@ public class LargestConnectedComponentTestCase {
         InputHandler inputHandler = executionPlanRuntime.getInputHandler("cseEventStream");
         executionPlanRuntime.start();
         inputHandler.send(new Object[]{"1234", "2345", 0});
-        Thread.sleep(1000);
         inputHandler.send(new Object[]{"2345", "5678", 1});
-        Thread.sleep(1000);
         inputHandler.send(new Object[]{"5678", "1234", 3});
-        Thread.sleep(1000);
         inputHandler.send(new Object[]{"5522", "3322", 3});
-        Thread.sleep(1000);
         inputHandler.send(new Object[]{"3322", "4567", 3});
-        Thread.sleep(1000);
         inputHandler.send(new Object[]{"4567", "7890", 3});
-        Thread.sleep(1000);
         inputHandler.send(new Object[]{"7890", "5428", 3});
-        Thread.sleep(4000);
+
+        Thread.sleep(100);
         Assert.assertEquals(4, count.get());
+        Assert.assertTrue(eventArrived);
+        executionPlanRuntime.shutdown();
+    }
+
+    @Test
+    public void LargestConnectedComponentTest2() throws InterruptedException {
+        LOGGER.info("Test largest connected component with update for every events");
+
+        SiddhiManager siddhiManager = new SiddhiManager();
+
+        String cseEventStream = "define stream cseEventStream (id String, friendsId String, volume int); ";
+        String query = "@info(name = 'query1') " +
+                "from cseEventStream#graph:lcc(id, friendsId, true) " +
+                "select largestConnectedComponent " +
+                "insert all events into outputStream;";
+
+        ExecutionPlanRuntime executionPlanRuntime = siddhiManager.createExecutionPlanRuntime(cseEventStream + query);
+
+        executionPlanRuntime.addCallback("query1", new QueryCallback() {
+            @Override
+            public void receive(long timeStamp, Event[] inEvents, Event[] removeEvents) {
+                EventPrinter.print(timeStamp, inEvents, removeEvents);
+                for (Event inEvent : inEvents) {
+                    count.incrementAndGet();
+                    eventArrived = true;
+
+                    if (count.get() == 1) {
+                        Assert.assertEquals(((Long) inEvent.getData()[0]).longValue(), 2L);
+                    } else if (count.get() >= 2 && count.get() <= 5) {
+                        Assert.assertEquals(((Long) inEvent.getData()[0]).longValue(), 3L);
+                    } else if (count.get() == 6) {
+                        Assert.assertEquals(((Long) inEvent.getData()[0]).longValue(), 4L);
+                    } else if (count.get() == 7) {
+                        Assert.assertEquals(((Long) inEvent.getData()[0]).longValue(), 5L);
+                    }
+                }
+            }
+        });
+
+        InputHandler inputHandler = executionPlanRuntime.getInputHandler("cseEventStream");
+        executionPlanRuntime.start();
+        inputHandler.send(new Object[]{"1234", "2345", 0});
+        inputHandler.send(new Object[]{"2345", "5678", 1});
+        inputHandler.send(new Object[]{"5678", "1234", 3});
+        inputHandler.send(new Object[]{"5522", "3322", 3});
+        inputHandler.send(new Object[]{"3322", "4567", 3});
+        inputHandler.send(new Object[]{"4567", "7890", 3});
+        inputHandler.send(new Object[]{"7890", "5428", 3});
+
+        Thread.sleep(100);
+        Assert.assertEquals(7, count.get());
         Assert.assertTrue(eventArrived);
         executionPlanRuntime.shutdown();
     }
