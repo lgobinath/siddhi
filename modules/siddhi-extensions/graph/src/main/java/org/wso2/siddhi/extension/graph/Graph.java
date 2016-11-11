@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.wso2.siddhi.extention.graph;
+package org.wso2.siddhi.extension.graph;
 
 import java.util.HashMap;
 import java.util.HashSet;
