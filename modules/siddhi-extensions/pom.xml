@@ -43,7 +43,6 @@
         <module>map</module>
         <module>kalman-filter</module>
         <module>markov-models</module>
-        <module>priority-window</module>
     </modules>
 
 </project>
